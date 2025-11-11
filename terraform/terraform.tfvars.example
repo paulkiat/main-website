@@ -1,0 +1,15 @@
+# Example Terraform Configuration
+# This file shows how to use the terraform modules
+
+# To use this configuration:
+# 1. Copy this file to a new file (e.g., my-env.tf)
+# 2. Update the variable values
+# 3. Run: terraform init && terraform plan -var-file=my-env.tf
+
+aws_region          = "us-east-1"
+environment         = "dev"
+project_name        = "paulkiat-website"
+domain_name         = ""  # Leave empty for CloudFront-only, or set to "paulkiat.io"
+enable_cloudwatch_logs = true
+enable_waf          = false
+log_retention_days  = 30
