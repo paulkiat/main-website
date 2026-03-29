@@ -1,7 +1,7 @@
 .PHONY: help init plan apply destroy fmt validate clean deploy
 
 # Default environment
-ENV ?= dev
+ENV ?= prod
 
 # Colors for output
 BLUE := \033[0;34m
@@ -64,13 +64,17 @@ clean: ## Clean terraform cache
 
 deploy: ## Deploy website to S3
 	@echo "$(BLUE)Deploying website to $(ENV) environment...$(NC)"
-	@BUCKET_NAME=$$(cd terraform && terraform output -raw website_bucket_name 2>/dev/null); \
+	@if [ ! -d "dist" ]; then \
+		echo "$(RED)Error: dist/ directory not found. Run 'npm run build' first.$(NC)"; \
+		exit 1; \
+	fi; \
+	BUCKET_NAME=$$(cd terraform && terraform output -raw website_bucket_name 2>/dev/null); \
 	if [ -z "$$BUCKET_NAME" ]; then \
 		echo "$(RED)Error: Cannot get bucket name. Has infrastructure been applied?$(NC)"; \
 		exit 1; \
 	fi; \
 	echo "$(GREEN)Uploading to S3 bucket: $$BUCKET_NAME$(NC)"; \
-	aws s3 sync src/adapters/primary/web/ s3://$$BUCKET_NAME/ --delete --cache-control "public, max-age=3600"
+	aws s3 sync dist/ s3://$$BUCKET_NAME/ --delete --cache-control "public, max-age=3600"
 
 invalidate: ## Invalidate CloudFront cache
 	@echo "$(BLUE)Invalidating CloudFront cache for $(ENV) environment...$(NC)"

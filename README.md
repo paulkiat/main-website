@@ -115,12 +115,26 @@ This project implements **Hexagonal Architecture** (Ports and Adapters):
 
 ### GitHub Actions Setup
 
+**Quick Setup**: Use automated scripts to configure AWS authentication:
+
+```bash
+# Option 1: OIDC (Recommended - Most Secure)
+cd scripts
+./setup-github-oidc.sh
+
+# Option 2: Access Keys (Quick Testing)
+cd scripts
+./setup-access-keys.sh
+```
+
+**Manual Setup**:
 1. **Configure AWS credentials** using OIDC (recommended) or access keys
 2. **Add repository secrets**:
-   - `AWS_ROLE_ARN`: IAM role ARN for GitHub Actions
+   - `AWS_ROLE_ARN`: IAM role ARN for GitHub Actions (OIDC)
+   - OR `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` (Access Keys)
 3. **Push to main branch** to trigger deployment
 
-See [docs/README.md](docs/README.md) for detailed setup instructions.
+See [docs/GITHUB_ACTIONS_SETUP.md](docs/GITHUB_ACTIONS_SETUP.md) for comprehensive setup instructions.
 
 ## 📊 Monitoring
 

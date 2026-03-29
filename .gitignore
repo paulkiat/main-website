@@ -5,9 +5,14 @@
 .terraform.lock.hcl
 *.tfvars
 !terraform.tfvars.example
+!terraform/environments/*/terraform.tfvars
 
 # AWS
 .aws/
+
+# Setup scripts output (contains sensitive credentials)
+github-oidc-config.txt
+github-access-keys-config.txt
 
 # IDE
 .idea/

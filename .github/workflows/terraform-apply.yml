@@ -13,12 +13,16 @@ on:
       environment:
         description: 'Environment to deploy'
         required: true
-        default: 'dev'
+        default: 'prod'
         type: choice
         options:
           - dev
           - staging
           - prod
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'prod' }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -26,20 +30,20 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  TERRAFORM_VERSION: 1.6.0
+  TERRAFORM_VERSION: 1.13.5
 
 jobs:
   terraform-apply:
     name: Terraform Apply
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || 'dev' }}
+    environment: ${{ github.event.inputs.environment || 'prod' }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -57,7 +61,7 @@ jobs:
         working-directory: terraform
         run: |
           terraform apply \
-            -var-file=environments/${{ github.event.inputs.environment || 'dev' }}/terraform.tfvars \
+            -var-file=environments/${{ github.event.inputs.environment || 'prod' }}/terraform.tfvars \
             -auto-approve
 
       - name: Get Terraform Outputs
@@ -70,10 +74,16 @@ jobs:
 
       - name: Log to CloudWatch
         run: |
+          # Create log stream if it doesn't exist
+          aws logs create-log-stream \
+            --log-group-name ${{ steps.terraform-outputs.outputs.log_group }} \
+            --log-stream-name deployment 2>/dev/null || true
+
+          # Put log events
           aws logs put-log-events \
             --log-group-name ${{ steps.terraform-outputs.outputs.log_group }} \
             --log-stream-name deployment \
-            --log-events timestamp=$(date +%s)000,message="Terraform applied successfully for ${{ github.event.inputs.environment || 'dev' }}"
+            --log-events timestamp=$(date +%s)000,message="Terraform applied successfully for ${{ github.event.inputs.environment || 'prod' }}"
 
     outputs:
       bucket_name: ${{ steps.terraform-outputs.outputs.bucket_name }}
@@ -84,14 +94,14 @@ jobs:
     name: Deploy Website
     runs-on: ubuntu-latest
     needs: terraform-apply
-    environment: ${{ github.event.inputs.environment || 'dev' }}
+    environment: ${{ github.event.inputs.environment || 'prod' }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -201,16 +211,22 @@ jobs:
 
       - name: Log deployment to CloudWatch
         run: |
+          # Create log stream if it doesn't exist
+          aws logs create-log-stream \
+            --log-group-name ${{ needs.terraform-apply.outputs.log_group }} \
+            --log-stream-name deployment 2>/dev/null || true
+
+          # Put log events
           aws logs put-log-events \
             --log-group-name ${{ needs.terraform-apply.outputs.log_group }} \
             --log-stream-name deployment \
-            --log-events timestamp=$(date +%s)000,message="Website deployed successfully to ${{ github.event.inputs.environment || 'dev' }}"
+            --log-events timestamp=$(date +%s)000,message="Website deployed successfully to ${{ github.event.inputs.environment || 'prod' }}"
 
       - name: Deployment Summary
         run: |
           echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Environment**: ${{ github.event.inputs.environment || 'dev' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ github.event.inputs.environment || 'prod' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **S3 Bucket**: ${{ needs.terraform-apply.outputs.bucket_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **CloudFront Distribution**: ${{ needs.terraform-apply.outputs.distribution_id }}" >> $GITHUB_STEP_SUMMARY
           echo "- **CloudWatch Log Group**: ${{ needs.terraform-apply.outputs.log_group }}" >> $GITHUB_STEP_SUMMARY

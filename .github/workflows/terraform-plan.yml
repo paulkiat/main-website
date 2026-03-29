@@ -8,6 +8,10 @@ on:
       - 'terraform/**'
       - '.github/workflows/terraform-plan.yml'
 
+concurrency:
+  group: plan-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pull-requests: write
@@ -15,7 +19,7 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  TERRAFORM_VERSION: 1.6.0
+  TERRAFORM_VERSION: 1.13.5
 
 jobs:
   terraform-plan:
@@ -23,14 +27,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        environment: [dev]
+        environment: [prod]
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -67,7 +71,7 @@ jobs:
           retention-days: 7
 
       - name: Comment PR
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         if: github.event_name == 'pull_request'
         with:
           script: |
